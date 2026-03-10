@@ -30,6 +30,7 @@ model Tenant {
   proposals         Proposal[]
   plans             Plan[]
   approvals         Approval[]
+  confirmRequests   ConfirmRequest[]
   auditLogs         AuditLog[]
   ledgerEvents      LedgerEvent[]
   freezeRules       FreezeRule[]
@@ -115,7 +116,7 @@ model Plan {
   @@map("plans")
 }
 
-// Approvals - 承認（TTL10分 + KYA principal）
+// Approvals - 承認（TTL10分 + KYA principal + Approval Lanes）
 model Approval {
   id                  String    @id @default(cuid())
   tenantId            String    @map("tenant_id")
@@ -123,10 +124,17 @@ model Approval {
   approveId           String    @unique @map("approve_id") // aprv_xxx
   planId              String?   @map("plan_id")
   
+  // Approval Lanes（Auto/Review/Gate）- phase1必須
+  approvalLane        String    @default("review") @map("approval_lane")         // auto|review|gate
+  principalType       String    @default("human") @map("principal_type")        // human|policy
+  principalPolicyRef  String?   @map("principal_policy_ref")  // policy principalの場合
+  requiredApprovals   Int       @default(1) @map("required_approvals") // gateの場合>=2
+  approvalsCollected  Int       @default(0) @map("approvals_collected")
+  
   // KYA Principal（承認者情報）
   approvedByUserId    String?   @map("approved_by_user_id")
   approvedByEmailHash String?   @map("approved_by_email_hash")
-  approvedVia         String?   @map("approved_via")         // ui|api
+  approvedVia         String?   @map("approved_via")         // ui|api|policy
   approvedAt          DateTime? @map("approved_at")
   
   scopeJson           String    @map("scope_json") // { "actions": [...], "risk_level": "low|medium|high" }
@@ -143,6 +151,28 @@ model Approval {
   @@index([approveId])
   @@index([tenantId, createdAt])
   @@map("approvals")
+}
+
+// Confirm Requests - Idempotency 管理（tenant_id × idempotency_key で握る）
+model ConfirmRequest {
+  id              String   @id @default(cuid())
+  tenantId        String   @map("tenant_id")
+  idempotencyKey  String   @map("idempotency_key")
+  requestHash     String   @map("request_hash")       // sha256(plan_id:approve_id:execution_mode:context_refs:context_receipts)
+  confirmId       String   @map("confirm_id")         // 内部生成ID（副作用ゼロ証明用、NOT NULL）
+  contextReceiptsDigest String? @map("context_receipts_digest")  // NEW: Context Receipt digest（T03厳密化用）
+  status          String   @default("started") @map("status")  // started|side_effects_started|completed|failed
+  receiptId       String?  @map("receipt_id")
+  responseJson    String?  @map("response_json")      // 完全なレスポンスを保存（冪等レスポンス用）
+  expiresAt       DateTime @map("expires_at")         // TTL 24h
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, idempotencyKey], name: "unique_tenant_idempotency")
+  @@index([tenantId, createdAt])
+  @@map("confirm_requests")
 }
 
 // Audit Logs - 監査ログ
@@ -164,14 +194,18 @@ model AuditLog {
   @@map("audit_logs")
 }
 
-// Execution Ledger - 台帳（append-only chain + KYA）
+// Execution Ledger - 台帳（append-only chain + KYA + Evidence + Lanes）
 model LedgerEvent {
   id                    String    @id @default(cuid())
   tenantId              String    @map("tenant_id")
   approveId             String?   @map("approve_id")
   planId                String?   @map("plan_id")
   action                String    // webhook.dispatch|calendar.hold.create
-  status                String    // approved|executed|failed|rolled_back
+  status                String    // approved|executed|failed|rolled_back|simulated
+  
+  // Approval Lanes（Auto/Review/Gate）- phase1必須
+  approvalLane          String?   @map("approval_lane")            // auto|review|gate
+  principalType         String?   @map("principal_type")           // human|policy
   
   // KYA (Know Your Agent) - phase1必須
   executorApiKeyId      String?   @map("executor_api_key_id")      // 実行主体（API Key）
@@ -182,6 +216,16 @@ model LedgerEvent {
   
   policyRef             String?   @map("policy_ref")               // ポリシー参照
   riskTier              String?   @map("risk_tier")                // low|medium|high
+  
+  // Evidence Pack (Responsible AI) - phase1必須
+  evidenceJson          String?   @map("evidence_json")            // {decision_rationale, data_sources[], model_info, context_refs[]}
+  
+  // Context Receipts (NEW: 署名付きコンテキスト証明) - phase1段階導入
+  contextReceipts       String?   @map("context_receipts")         // [{type, ref, hash, sig, issuer, accessed_at, scope}]
+  
+  // Outcome Pack (NEW: 結果/事故/停止/上書きの最小信号) - phase1段階導入
+  // NOTE: append-only。後から更新しない（新しいイベントで追記）
+  outcomeJson           String?   @map("outcome_json")             // {final_status, actions[], incident, overrides[]}
   
   beforeJson            String?   @map("before_json")
   afterJson             String?   @map("after_json")
@@ -237,40 +281,78 @@ model ConnectorConfig {
 
 // Webhook Jobs - Webhook配信ジョブ（timestamp replay protection）
 model WebhookJob {
-  id            String    @id @default(cuid())
-  tenantId      String    @map("tenant_id")
-  jobId         String    @unique @map("job_id")
-  targetUrlHash String    @map("target_url_hash")
-  payloadJson   String    @map("payload_json")
-  signature     String
-  timestamp     BigInt    @default(0)                        // Unix epoch seconds（replay protection）
-  status        String    @default("queued") // queued|delivering|succeeded|failed
-  attempts      Int       @default(0)
-  nextAttemptAt DateTime? @map("next_attempt_at")
-  lastError     String?   @map("last_error")
-  createdAt     DateTime  @default(now()) @map("created_at")
-  updatedAt     DateTime  @updatedAt @map("updated_at")
+  id             String    @id @default(cuid())
+  tenantId       String    @map("tenant_id")
+  jobId          String    @unique @map("job_id")
+  targetUrlHash  String    @map("target_url_hash")
+  
+  // Data-Minimization: 最小構造のみ（event type + refs）。raw body は持たない。
+  payloadJson    String    @map("payload_json")                   // {event, tenant_id, confirm_id, kya} のみ
+  payloadHash    String?   @map("payload_hash")                   // 完全なpayloadのhash（検証用）
+  
+  signature      String
+  timestamp      BigInt    @default(0)                        // Unix epoch seconds（replay protection）
+  idempotencyKey String    @map("idempotency_key")            // 冪等キー（Treaty v0 必須）
+  status         String    @default("queued") // queued|delivering|succeeded|failed
+  attempts       Int       @default(0)
+  nextAttemptAt  DateTime? @map("next_attempt_at")
+  
+  // Data-Minimization: raw error は持たない（hash + code のみ）
+  errorCode      String?   @map("error_code")                     // HTTP_500|TIMEOUT|DNS_ERROR 等
+  errorHash      String?   @map("error_hash")                     // エラー内容のhash（raw は持たない）
+  httpStatus     Int?      @map("http_status")                    // 200|500|timeout=null
+  
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
+  // NOTE(phase1): 1 idempotency_key = 1 webhook job を前提
+  // Policy/Planner側で「phase1は webhook.dispatch は最大1本」を強制
+  // 将来、複数webhookを送る場合は @@unique([tenantId, idempotencyKey, actionKey]) に変更
+  @@unique([tenantId, idempotencyKey], name: "unique_tenant_idempotency_job")
   @@index([tenantId, status])
   @@index([nextAttemptAt])
   @@map("webhook_jobs")
 }
 
-// Receipts - 実行レシート（KYA表示）
+// Receipts - 実行レシート（KYA表示 + Truth-First + Evidence-First + Lanes）
 model Receipt {
   id                  String   @id @default(cuid())
   tenantId            String   @map("tenant_id")
+  confirmId           String   @map("confirm_id")               // 内部生成ID（202詰み復旧用）
   planId              String   @map("plan_id")
   status              String   // success|partial|failed
   summaryText         String   @map("summary_text")
+  
+  // Approval Lanes（Auto/Review/Gate）- phase1必須
+  approvalLane        String?  @map("approval_lane")            // auto|review|gate
+  principalType       String?  @map("principal_type")           // human|policy
   
   // KYA（receiptに表示）
   executorApiKeyId    String?  @map("executor_api_key_id")
   executorAgentLabel  String?  @map("executor_agent_label")
   principalUserId     String?  @map("principal_user_id")
-  policyRef           String?  @map("policy_ref")
+  
+  // Truth-First（T20: Receipt検証用）
+  policyRef           String?  @map("policy_ref")               // なぜ許されたか
+  riskTier            String?  @map("risk_tier")                // low|medium|high
+  receiptHash         String?  @map("receipt_hash")             // Receipt改ざん検知（最新ビューのhash）
+  serverSig           String?  @map("server_sig")               // サーバー署名（最新ビューの署名）
+  receiptVersion      Int      @default(1) @map("receipt_version") // 更新回数（hash/sig整合性の追跡）
+  
+  // Evidence-First（T22: Responsible AI）
+  evidenceJson        String?  @map("evidence_json")            // {decision_rationale, data_sources[], model_info, context_refs[]}
+  
+  // Context Receipts (NEW: 署名付きコンテキスト証明) - phase1段階導入
+  contextReceipts     String?  @map("context_receipts")         // [{type, ref, hash, sig, issuer, accessed_at, scope}]
+  
+  // Outcome Pack (NEW: 結果/事故/停止/上書きの最小信号) - phase1段階導入
+  // NOTE: JSONB推奨だが、phase1はStringで開始（将来マイグレーション）
+  outcomeJson         String?  @map("outcome_json")             // {final_status, actions[], incident, overrides[]}
+  
+  // No-Switch Ops
+  executionMode       String?  @map("execution_mode")           // live|shadow|canary
   
   createdAt           DateTime @default(now()) @map("created_at")
 
@@ -278,6 +360,7 @@ model Receipt {
   plan         Plan          @relation(fields: [planId], references: [id], onDelete: Cascade)
   receiptLinks ReceiptLink[]
 
+  @@unique([tenantId, confirmId], name: "unique_tenant_confirm")  // 202詰み復旧用
   @@index([tenantId, createdAt])
   @@index([executorApiKeyId])
   @@map("receipts")
@@ -303,7 +386,7 @@ model ReceiptLink {
 model GrowthEvent {
   id       String   @id @default(cuid())
   tenantId String   @map("tenant_id")
-  type     String   // approve_link_opened|receipt_shared|template_exported|template_imported
+  type     String   // approve_link_opened|receipt_shared|template_exported|template_imported|audit_bundle_exported
   metaJson String   @map("meta_json")
   at       DateTime @default(now())
 
@@ -340,15 +423,16 @@ model BillingContract {
   @@map("billing_contracts")
 }
 
-// Usage Counters Daily - 日次使用量
+// Usage Counters Daily - 日次使用量（No-Switch Ops対応）
 model UsageCounterDaily {
-  id             String   @id @default(cuid())
-  tenantId       String   @map("tenant_id")
-  day            DateTime @db.Date
-  confirms       Int      @default(0)
-  webhookJobs    Int      @default(0) @map("webhook_jobs")
-  calendarHolds  Int      @default(0) @map("calendar_holds")
-  createdAt      DateTime @default(now()) @map("created_at")
+  id              String   @id @default(cuid())
+  tenantId        String   @map("tenant_id")
+  day             DateTime @db.Date
+  confirms        Int      @default(0)                        // live confirms only
+  shadowConfirms  Int      @default(0) @map("shadow_confirms") // shadow (dry-run) confirms
+  webhookJobs     Int      @default(0) @map("webhook_jobs")
+  calendarHolds   Int      @default(0) @map("calendar_holds")
+  createdAt       DateTime @default(now()) @map("created_at")
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 

@@ -1,4 +1,4 @@
-#!/usr/bin/env ts-node
+#!/usr/bin/env node
 /**
  * Webhook Worker - Phase1 簡易配送ワーカー
  * 
@@ -12,22 +12,22 @@
  * npm run webhook-worker
  */
 
-// .env を確実にロード（ts-nodeは自動ロードしないため）
+// .env を確実にロード
 require('dotenv').config();
 
-import { PrismaClient } from '@prisma/client';
-import fetch from 'node-fetch';
+const { PrismaClient } = require('@prisma/client');
+const fetch = require('node-fetch');
+const crypto = require('crypto');
 
 const prisma = new PrismaClient();
 
 const POLL_INTERVAL_MS = parseInt(process.env.WEBHOOK_POLL_INTERVAL_MS || '5000', 10);
-const MAX_ATTEMPTS = parseInt(process.env.WEBHOOK_MAX_ATTEMPTS || '8', 10); // CURSOR_SEED.md仕様に合わせる
+const MAX_ATTEMPTS = parseInt(process.env.WEBHOOK_MAX_ATTEMPTS || '8', 10);
 const BATCH_SIZE = parseInt(process.env.WEBHOOK_BATCH_SIZE || '10', 10);
 
 async function processWebhookJobs() {
   const now = new Date();
   
-  // queued または failed（次回試行時刻が過ぎている）ジョブを取得
   const jobs = await prisma.webhookJob.findMany({
     where: {
       OR: [
@@ -51,7 +51,6 @@ async function processWebhookJobs() {
 
   for (const job of jobs) {
     try {
-      // ジョブをdelivering状態に更新
       await prisma.webhookJob.update({
         where: { id: job.id },
         data: {
@@ -60,10 +59,9 @@ async function processWebhookJobs() {
         },
       });
 
-      // Webhook配送
-      const payload = JSON.parse(job.payloadJson);
+      // 重要: payloadJsonをそのまま使用（JSON.parse/stringifyでキー順序が変わるのを防ぐ）
+      const payloadJsonString = job.payloadJson;
       
-      // target_url_hash から実際のURLを取得（connector_configsから）
       const connectorConfig = await prisma.connectorConfig.findFirst({
         where: {
           tenantId: job.tenantId,
@@ -77,8 +75,7 @@ async function processWebhookJobs() {
 
       const configJson = JSON.parse(connectorConfig.configJson);
       const registeredUrls = configJson.registered_urls || [];
-      const targetUrlObj = registeredUrls.find((u: any) => {
-        const crypto = require('crypto');
+      const targetUrlObj = registeredUrls.find((u) => {
         const hash = crypto.createHash('sha256').update(u.url).digest('hex');
         return hash === job.targetUrlHash;
       });
@@ -89,7 +86,6 @@ async function processWebhookJobs() {
 
       const targetUrl = targetUrlObj.url;
 
-      // HTTP POST送信（10秒タイムアウト）
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 10000);
       
@@ -101,8 +97,9 @@ async function processWebhookJobs() {
             'X-Yohaku-Signature': job.signature,
             'X-Yohaku-Job-Id': job.jobId,
             'X-Yohaku-Timestamp': job.timestamp.toString(),
+            'X-Idempotency-Key': job.idempotencyKey,
           },
-          body: JSON.stringify(payload),
+          body: payloadJsonString,
           signal: controller.signal,
         });
       } finally {
@@ -113,7 +110,6 @@ async function processWebhookJobs() {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
 
-      // 成功
       await prisma.webhookJob.update({
         where: { id: job.id },
         data: {
@@ -125,11 +121,10 @@ async function processWebhookJobs() {
       console.log(`[WEBHOOK_WORKER] ✅ Job ${job.jobId} succeeded`);
 
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorMessage = error.message || 'Unknown error';
       const attempts = job.attempts + 1;
       
       if (attempts >= MAX_ATTEMPTS) {
-        // 最大試行回数に達したら failed
         await prisma.webhookJob.update({
           where: { id: job.id },
           data: {
@@ -139,8 +134,7 @@ async function processWebhookJobs() {
         });
         console.error(`[WEBHOOK_WORKER] ❌ Job ${job.jobId} failed permanently: ${errorMessage}`);
       } else {
-        // リトライ（exponential backoff）
-        const backoffMs = Math.pow(2, attempts) * 1000; // 2秒, 4秒, 8秒...
+        const backoffMs = Math.pow(2, attempts) * 1000;
         const nextAttemptAt = new Date(Date.now() + backoffMs);
         
         await prisma.webhookJob.update({
@@ -163,14 +157,12 @@ async function main() {
   console.log(`[WEBHOOK_WORKER] Max attempts: ${MAX_ATTEMPTS}`);
   console.log(`[WEBHOOK_WORKER] Batch size: ${BATCH_SIZE}`);
   
-  // 環境確認ログ（デバッグ用）
   const dbUrl = process.env.DATABASE_URL || 'NO_DATABASE_URL';
   const dbHost = dbUrl.includes('@') ? dbUrl.split('@')[1].split('/')[0] : 'unknown';
-  const secretPrefix = process.env.WEBHOOK_SIGNING_SECRET?.substring(0, 6) || 'NO_SECRET';
+  const secretPrefix = (process.env.WEBHOOK_SIGNING_SECRET || 'NO_SECRET').substring(0, 6);
   console.log(`[WEBHOOK_WORKER] DB host: ${dbHost}`);
   console.log(`[WEBHOOK_WORKER] Webhook secret prefix: ${secretPrefix}...`);
 
-  // ポーリングループ
   while (true) {
     try {
       await processWebhookJobs();
@@ -182,7 +174,6 @@ async function main() {
   }
 }
 
-// Graceful shutdown
 process.on('SIGINT', async () => {
   console.log('[WEBHOOK_WORKER] Shutting down...');
   await prisma.$disconnect();
@@ -200,4 +191,5 @@ main().catch(async (error) => {
   await prisma.$disconnect();
   process.exit(1);
 });
+
 

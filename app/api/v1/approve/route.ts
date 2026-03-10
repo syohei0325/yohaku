@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     console.log('[APPROVE] Body received:', JSON.stringify(body));
     
-    const { plan_id, tenant_id, user_id } = body;
+    const { plan_id, tenant_id, user_id, approval } = body;
     
     if (!plan_id) {
       return NextResponse.json(
@@ -63,6 +63,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Approval Lanes判定（phase1: デフォルトはreview）
+    const approvalLane = approval?.lane || 'review'; // auto|review|gate
+    const principalType = approval?.principal?.type || 'human'; // human|policy
+    const principalPolicyRef = principalType === 'policy' ? (approval?.principal?.policy_ref || 'phase1_allowlist+registered_target+low_risk') : null;
+    
+    // phase1では Gate lane の不可逆実行は禁止
+    if (approvalLane === 'gate') {
+      return NextResponse.json(
+        { error: '403_GATE_NOT_ALLOWED_PHASE1', message: 'Gate lane (irreversible actions) not allowed in phase1' },
+        { status: 403 }
+      );
+    }
+
     // Approval作成（TTL 10分）
     const approvalId = `appr_${uuidv4()}`;
     const approveId = `aprv_${uuidv4()}`;
@@ -78,6 +91,9 @@ export async function POST(request: NextRequest) {
         userId,
         approveId,
         planId: plan_id,
+        approvalLane,
+        principalType,
+        principalPolicyRef,
         scopeJson: JSON.stringify({
           actions: actions.map((a: any) => a.action),
           risk_level: 'low', // phase1は低リスクのみ
@@ -95,6 +111,8 @@ export async function POST(request: NextRequest) {
         action: 'approve',
         payloadJson: JSON.stringify({
           plan_id,
+          approval_lane: approvalLane,
+          principal_type: principalType,
         }),
       },
     });
@@ -103,6 +121,8 @@ export async function POST(request: NextRequest) {
       approve_id: approveId,
       expires_in_sec: 600,
       expires_at: expiresAt.toISOString(),
+      approval_lane: approvalLane,
+      principal_type: principalType,
       phase: CURRENT_PHASE,
     };
     

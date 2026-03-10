@@ -38,6 +38,21 @@ export async function POST(request: NextRequest) {
     const userId = context?.user_id || 'user_mock_001';
     const tz = context?.tz || 'Asia/Tokyo';
 
+    // Ensure User exists (upsert)
+    const crypto = require('crypto');
+    const emailHash = crypto.createHash('sha256').update('demo@example.com').digest('hex');
+    
+    await prisma.user.upsert({
+      where: { id: userId },
+      update: {},
+      create: {
+        id: userId,
+        tenantId: tenantId,
+        emailHash: emailHash,
+        role: 'member',
+      },
+    });
+
     // Mock mode（APIキー問題を回避）
     const useMock = process.env.YOHAKU_PLANNER_MODE === 'mock';
     

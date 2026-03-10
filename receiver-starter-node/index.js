@@ -102,6 +102,11 @@ app.post('/webhook', (req, res) => {
     return res.status(401).json({ error: 'Missing timestamp' });
   }
   
+  console.log('[WEBHOOK] Body:', JSON.stringify(req.body));
+  console.log('[WEBHOOK] Signature:', signature);
+  console.log('[WEBHOOK] Timestamp:', timestamp);
+  console.log('[WEBHOOK] Secret prefix:', WEBHOOK_SIGNING_SECRET.substring(0, 6) + '...');
+  
   const signatureResult = verifySignature(req.body, signature, timestamp, WEBHOOK_SIGNING_SECRET);
   if (!signatureResult.valid) {
     console.error('[WEBHOOK] Signature verification failed:', signatureResult.reason);
@@ -170,6 +175,7 @@ app.listen(PORT, () => {
   console.log(`🚀 Yohaku Receiver listening on port ${PORT}`);
   console.log(`📝 Webhook endpoint: http://localhost:${PORT}/webhook`);
   console.log(`💚 Health check: http://localhost:${PORT}/health`);
+  console.log(`🔐 Secret prefix: ${WEBHOOK_SIGNING_SECRET.substring(0, 6)}...`);
 });
 
 

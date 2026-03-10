@@ -18,7 +18,7 @@
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
-    "webhook-worker": "ts-node scripts/webhook-worker.ts",
+    "webhook-worker": "node scripts/webhook-worker.js",
     "postinstall": "prisma generate"
   },
   "keywords": [
