@@ -359,6 +359,95 @@
 # =========================================
 
 # =========================================
+# Context Execution OS 強化：実務10項目（2026 追記）
+# =========================================
+# 前提：AGI/汎用モデルが強くなるほど余白の必要性は上がる。
+#   理由：OpenAI Frontier公式「AI coworkersに必要なのは identity, permissions, guardrails, boundaries」
+#         Atlassian Rovo 500万MAU超、Teamwork Graph 1000億オブジェクト
+#         → 価値は「AIそのもの」より「業務プロセス・権限・記録」に寄っている
+#
+# 余白が生き残る条件：
+#   「モデルの上の便利機能」に落ちないこと。
+#   やってはいけない3つ：
+#     × 汎用AIエージェントプラットフォーム化
+#     × 汎用のAIメモリー/パーソナルAIに寄る
+#     × 汎用のAIセキュリティスキャナ/evals基盤に寄る
+#   → OpenAI/Google/Moonshot/Atlassianが持ちやすい領域。吸収されやすい。
+#
+# ─────────────────────────────────────────
+# 追加すべき10項目（優先順高い順）
+# ─────────────────────────────────────────
+#
+# [1] 定義を "Context Execution OS" に固定する（言語の問題）
+#     - 外向け説明・README・llm.txt・投稿文すべてで統一する
+#     - "safe confirmation API" という表現は使わない
+#     - 正：「context-rich agents の execution boundary」
+#     - 正：「context becomes accountable action の場所」
+#
+# [2] Context Receipt を脇役から主役に上げる（設計の問題）
+#     - 現状：オプション扱い
+#     - 変更：confirm リクエストに context_receipts[] を推奨必須化
+#     - 理由：Memory-rich agent が何にアクセスしたかの証明が監査の核になる
+#     - 実装：context_receipts[] + scope + permission_level を Receipt に必須フィールド化
+#
+# [3] ActionSpec / DSL を「自然言語実行禁止」のルールとして明文化（設計の問題）
+#     - 現状：ActionSpec は機能として存在するが、強制ではない
+#     - 変更：「自然言語を直接 confirm に渡すことを仕様上禁止」と明記
+#     - 理由：どれだけ賢いエージェントでも compile → lint → approve → confirm を通す
+#     - 効果：compiled_spec_hash で「何が実行されたか」を hash で固定できる
+#             policy lint が効く / 監査が通る / Karpathy の "leash" を仕様で実装
+#
+# [4] Fleet Ops の言語を今のうちに定義する（将来設計の問題）
+#     - 現状：fleet の概念は Seed に入っているが API に反映されていない
+#     - 変更：fleet_id / mission_id / fleet_freeze / fleet_health / policy_pack を
+#             ConfirmRequest と Receipt の拡張フィールドとして定義（実装は後でよい）
+#     - 理由：Moonshot Agent Swarm / OpenClaw fleet に対応する "出口OS" として位置づけ
+#
+# [5] OpenClaw / Kimi Claw との役割分担を API レベルで明示する（GTM の問題）
+#     - 現状：CURSOR_SEED.md に書いてあるが、外部向けドキュメントに出ていない
+#     - 変更：README / llm.txt に「入口はOpenClaw、出口はYohaku」の統合パターンを追加
+#     - 効果：OpenClaw コミュニティへの投稿時に「なぜ余白が必要か」が一発で伝わる
+#
+# [6] 「汎用セキュリティ」との差別化を1行で固定する（ポジショニングの問題）
+#     - 現状：Promptfoo との差別化は Seed に書いてある
+#     - 変更：外向け全ドキュメントに「Promptfoo = pre-deploy / Yohaku = runtime」を統一表記
+#     - 追加：security_signals[] の入力受け口を API に定義（自前で検出しない、受け取るだけ）
+#
+# [7] Shadow Mode を「本番導入のレール」として前面に出す（GTM の問題）
+#     - 現状：Shadow Mode は機能として存在するが、デモで目立っていない
+#     - 変更：「Shadow → Canary → Live」の3ステップを、設計パートナー向けの導入フローとして明示
+#     - 理由：企業が怖いのは「いきなり本番」。Shadow Mode があることで採用障壁が下がる
+#
+# [8] Audit Bundle / 監査提出物を具体化する（エンタープライズ向けの問題）
+#     - 現状：ledger export は存在するが、「監査に出せる形」になっていない
+#     - 変更：Audit Bundle = Receipt + Ledger + Context Receipts + security_provenance の
+#             zip/JSON エクスポートを定義（実装は後でよい）
+#     - 理由：OpenAI Frontier が「reporting / traceability」を前面に出した。
+#             企業が欲しいのは「賢い」より「説明できる」
+#
+# [9] 削除・縮小すべきもの（やらないことの明文化）
+#     - 削除：汎用 AI メモリー / パーソナル AI 的な機能追加の検討
+#     - 削除：汎用 evals / レッドチーミング / 脆弱性スキャン機能
+#     - 縮小：OpenClaw 本体の開発（adapter/pack のみ作る）
+#     - 理由：大手に吸収されやすい。Yohaku の runtime boundary の純度を保つ
+#
+# [10] 優先順位の固定（迷わないために）
+#     今すぐ：デモ動画を撮る（90秒）
+#     次：    OpenClaw Entrance Pack 最小版（4機能のみ）
+#     その次：設計パートナー3社に直撃
+#     将来：  Fleet Ops API の正式定義 / Audit Bundle / Context Governance 必須化
+#
+# ─────────────────────────────────────────
+# 最終定義（これ以降変えない）
+# ─────────────────────────────────────────
+#   余白 = Context Execution OS
+#   余白 = context-rich agent fleets の execution boundary
+#   余白 = context becomes accountable action の場所
+#
+#   「モデルに賭けるな。モデルが強くなる世界で、絶対に残る境界に賭けろ。それがYohaku。」
+# =========================================
+
+# =========================================
 # North Star（矛盾ゼロ：Gate1→Gate2→Gate3の“増やし方”を最初から固定）
 # =========================================
 # ※表記ルール（外部でも誤解されないために固定）：
