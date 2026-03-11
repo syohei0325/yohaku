@@ -200,6 +200,54 @@
 
 
 # =========================================
+# Promptfoo買収（OpenAI）が示すYohakuの勝ち筋（2026 追記）
+# =========================================
+# 出来事：OpenAIがPromptfoo（Fortune 500の25%超が利用）を買収し、
+#         Frontierプラットフォームに統合（自動レッドチーミング/エージェント評価/監視/追跡）
+#
+# 市場への示唆：
+#   「安全・ガバナンス・監査・追跡」は"あったら良い機能"ではなく、
+#   エンタープライズ導入の前提条件になった。
+#   OpenAI Frontierが重視するのは：identity / permissions / boundaries / reporting / traceability
+#
+# Yohakuの住み分け（これを固定する）：
+#   Promptfoo = pre-deploy security（出荷前に危険を見つける）
+#   Yohaku    = runtime trust control（本番で危険を実行させない）
+#   → 競合ではなく層が違う。Promptfooの結果を入力として食える設計にするだけでいい。
+#
+# やってはいけないこと：
+#   ✗ 汎用AIセキュリティスキャナを作る（OpenAIが内製していく）
+#   ✗ 汎用evals基盤を作る（吸収されやすい）
+#   ✗ 汎用guardrails UIを作る（同上）
+#   → そこはPromptfoo/Frontier側の領域。Yohakuは runtime boundary に徹する。
+#
+# Yohakuが取るべき5つのruntime boundary：
+#   1. 実行前の境界：ActionSpec lint → approve → confirm（自然言語をそのまま実行しない）
+#   2. 実行時の境界：Receipt / Ledger / Context Receipt / Outcome Pack（誰が/何を/どの権限で/どうなったか）
+#   3. 異常時の境界：Freeze / Circuit Breaker（「いま止める」を持つ）
+#   4. 冪等と復旧の境界：ConfirmRequest + fencing + 202復旧（本番運用の信頼）
+#   5. 監査提出の境界：Audit Bundle（「説明できる」を提出物まで落とす）
+#
+# 追加すべき概念（実装は後回しでいい。設計に入れておく）：
+#   security_signals[]（外部セキュリティ評価の結果を入力として受け取る）
+#     例: prompt_injection_suspected / data_exfil_risk / jailbreak_detected / mcp_proxy_violation
+#   lint_results のカテゴリ追加：
+#     prompt_injection_risk / tool_misuse / out_of_policy_agent_behavior / data_leak_risk
+#   Audit Bundle に security_provenance を追加：
+#     「この実行はどの security signal を前提に許可/拒否されたか」を残す
+#
+# OpenClaw との関係：
+#   OpenClaw = 入口パック（distribution）
+#   Yohaku   = runtime boundary（外部副作用は全部 /confirm に流す）
+#   "OpenClaw用セキュリティ製品"にしない。入口として使うだけ。
+#
+# 一言：
+#   Promptfooが「出荷前に危険を見つける」なら、Yohakuは「本番で危険を実行させない」。
+# =========================================
+
+
+
+# =========================================
 # North Star（矛盾ゼロ：Gate1→Gate2→Gate3の“増やし方”を最初から固定）
 # =========================================
 # ※表記ルール（外部でも誤解されないために固定）：
