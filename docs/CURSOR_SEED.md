@@ -301,6 +301,64 @@
 
 
 # =========================================
+# Moonshot / Context-Rich Agent 時代（2026 追記）- Yohakuを Context Execution OS に一段上げる
+# =========================================
+#
+# 前提：Moonshotの方向性（Kimi K2, Kimi Claw, Agent Swarm Beta, 256K context, tool calling）
+#   → モデルはどんどん「長い文脈を読める・複数エージェントで動ける・自分でツールを選ぶ」方向へ
+#   → しかし激しい価格/シェア競争（DeepSeek以降、米国モデルの1/6〜1/4コスト）に巻き込まれている
+#   → つまり "モデルそのもの" は天才研究者＋巨大資本が必要な最も不利なゲーム
+#
+# Yohakuの正しい賭け方：
+#   モデルに賭けるな。モデルが強くなる世界で、絶対に残る境界に賭けろ。
+#
+# 3種類の「モデルに賭ける」と、Yohakuがやるべきこと：
+#   1. 自分でフロンティアモデルを作る → やらない
+#   2. 特化モデル/微調整モデルを持つ → やらない
+#   3. モデルが強くなる前提で、その上の層を取る → これだけやる
+#
+# 定義のアップデート：
+#   旧：Yohaku = safe confirmation API
+#   新：Yohaku = context-rich agents の execution OS
+#       "Yohaku is the execution boundary for memory-rich agent fleets."
+#       "Yohaku is where context becomes accountable action."
+#   日本語：余白は、コンテキストを"責任ある実行"に変える境界OS。
+#
+# Moonshotが取ろうとしているもの vs Yohakuが取るべきもの：
+#   Moonshot = 知能とコンテキストを持つ主体（モデル・エージェント基盤）
+#   Yohaku   = その主体が実行する時の境界（Execution OS）
+#   → 競合ではない。Moonshot的な未来が来るほど、Yohakuは必要になる。
+#
+# 今の余白に一段上げるべき3つの軸：
+#
+#   A. Context Governance（コンテキスト統治）
+#      - Context Receipt を必須級に引き上げる
+#      - 「何を見たか」「どの権限で見たか」「そのスコープで何をして良いか」を軸にする
+#      - Memory-rich agent が何にアクセスしたかの証明が、監査の核になる
+#      - 実装：context_receipts[] + scope + permission_level を Receipt に必須化
+#
+#   B. ActionSpec / DSL（実行の中間表現）
+#      - 自然言語を直接実行しない
+#      - 必ず ActionSpec に compile → lint → approve → confirm の流れを通す
+#      - これが Karpathy の "leash"、Moonshot的な自律エージェントへの制御線
+#      - compiled_spec_hash を Receipt に含めることで「何が実行されたか」が証明可能
+#
+#   C. Fleet Ops（艦隊運用）
+#      - 1件の approve ではなく、agent群（fleet）/ mission / workflow を安全に回す言語
+#      - Fleet 単位で権限/予算/停止を扱う
+#      - Moonshot の Agent Swarm に対応する "出口OS" として位置づける
+#      - 実装：fleet_id / mission_id / budget_remaining を ConfirmRequest に追加
+#
+# OpenClaw / Kimi Claw との役割分担（固定）：
+#   OpenClaw/Kimi Claw = 入口（バズ・流入・デモ・adapter/pack のみ作る）
+#   Yohaku             = 出口OS（課金・標準・監査・信頼）
+#   → 入口は変わる。出口を握る。
+#
+# 一言（固定）：
+#   「モデルが賢くなるほど、境界が必要になる。それがYohaku。」
+# =========================================
+
+# =========================================
 # North Star（矛盾ゼロ：Gate1→Gate2→Gate3の“増やし方”を最初から固定）
 # =========================================
 # ※表記ルール（外部でも誤解されないために固定）：
