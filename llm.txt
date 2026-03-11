@@ -1,0 +1,215 @@
+# Yohaku Action Cloud — llm.txt
+# Machine-readable summary for AI agents and LLM-based tooling.
+# Version: 1.0 | Updated: 2026-02-06
+
+## What is Yohaku?
+
+Yohaku is the neutral execution layer for AI agents.
+Every AI agent action that touches the real world MUST pass through Yohaku before execution.
+
+Core guarantee: No action is executed without an Authorization object.
+"Human optional. Accountability mandatory."
+
+## When to use Yohaku
+
+Use Yohaku when your agent needs to:
+- Execute any action with real-world side effects (webhooks, emails, calendar, database writes, API calls)
+- Prove who authorized an action and why
+- Prevent double execution (idempotency)
+- Allow a human to review or stop an action before it runs
+- Generate a tamper-evident audit trail
+- Handle emergency stop (Freeze / Circuit Breaker)
+
+Do NOT use Yohaku for:
+- Read-only operations with no side effects
+- Internal reasoning / planning steps
+- Pre-deploy security scanning (use Promptfoo or similar for that)
+
+## Core Flow
+
+```
+Agent generates plan (ActionSpec)
+  → POST /v1/plan
+  → POST /v1/approve  (human or policy issues Authorization)
+  → POST /v1/confirm  (idempotent execution, requires X-Idempotency-Key header)
+  → GET  /v1/receipt/:id  (signed, tamper-evident proof)
+```
+
+## API Endpoints
+
+Base URL: https://your-yohaku-instance.com/api
+
+### POST /v1/plan
+Create an execution plan.
+Request body:
+```json
+{
+  "tenant_id": "string",
+  "actions": [
+    { "action": "webhook.dispatch", "url": "https://target.com/hook" },
+    { "action": "calendar.hold.create", "title": "string", "duration_minutes": 30 }
+  ],
+  "context_refs": ["ref1", "ref2"],
+  "risk_tier": "low | medium | high"
+}
+```
+Returns: `{ "plan_id": "pl_xxx" }`
+
+### POST /v1/approve
+Issue an Authorization for a plan. TTL: 10 minutes.
+Request body:
+```json
+{
+  "plan_id": "pl_xxx",
+  "tenant_id": "string",
+  "approval": {
+    "lane": "auto | review | gate",
+    "principal": { "type": "human | policy | agent", "id": "string" }
+  }
+}
+```
+Returns: `{ "approve_id": "aprv_xxx", "expires_at": "ISO8601" }`
+
+### POST /v1/confirm
+Execute the plan. Idempotent — safe to retry.
+Required header: `X-Idempotency-Key: <unique string per logical operation>`
+Request body:
+```json
+{
+  "plan_id": "pl_xxx",
+  "approve_id": "aprv_xxx",
+  "tenant_id": "string",
+  "execution_mode": "live | shadow",
+  "context_receipts": []
+}
+```
+Returns: `{ "confirm_id": "cnf_xxx", "receipt_id": "rcp_xxx", "status": "success | shadow" }`
+
+Error codes:
+- 409 T03: idempotency key conflict (different request hash — do not retry with same key)
+- 410 T06: approval expired
+- 423 T08: tenant or connector is frozen
+
+### GET /v1/receipt/:receipt_id
+Retrieve signed receipt.
+Returns full receipt including: approval_lane, principal_type, evidence_pack, outcome_pack, context_receipts, receipt_hash, server_sig.
+
+### POST /v1/freeze
+Emergency stop.
+```json
+{ "tenant_id": "string", "scope": "global | tenant | connector | target", "reason": "string" }
+```
+
+### GET /v1/ledger/export
+Export append-only audit ledger as JSON or CSV.
+
+## Approval Lanes
+
+| Lane   | Who approves      | Use case                        |
+|--------|-------------------|---------------------------------|
+| auto   | Policy (no human) | Low-risk, high-frequency ops    |
+| review | Human required    | Medium-risk, default            |
+| gate   | Double approval   | High-risk, irreversible actions |
+
+## Idempotency Rules
+
+- Always set `X-Idempotency-Key` on POST /v1/confirm
+- Key format: `<tenant_id>:<operation_name>:<unique_id>` (recommended)
+- Same key + same request body → returns cached receipt (safe retry)
+- Same key + different request body → 409 T03 (do not retry)
+- Generate a new key for each logically distinct operation
+
+## Receipt Structure
+
+```json
+{
+  "receipt_id": "rcp_xxx",
+  "final_status": "success | shadow | failed",
+  "approval_lane": "auto | review | gate",
+  "principal_type": "human | policy | agent",
+  "executor": "string",
+  "tenant_id": "string",
+  "receipt_hash": "sha256hex",
+  "server_sig": "hmachex",
+  "evidence": {
+    "decision_rationale": "string",
+    "data_sources": [{ "type": "policy|doc|api", "ref": "string", "hash": "string" }],
+    "model_info": { "provider": "string", "model": "string" }
+  },
+  "outcome": {
+    "final_status": "success | partial | failed",
+    "actions": [{ "action": "string", "status": "string" }]
+  },
+  "context_receipts": [
+    {
+      "type": "string",
+      "issuer": "string",
+      "ref": "string",
+      "hash": "string",
+      "accessed_at": "ISO8601",
+      "scope": "string"
+    }
+  ]
+}
+```
+
+## Integration Pattern for AI Agents
+
+```python
+# Recommended pattern for any AI agent
+def execute_with_yohaku(actions, context, idempotency_key):
+    # 1. Create plan
+    plan = yohaku.plan(actions=actions, context_refs=context.refs)
+
+    # 2. Request approval (human or policy)
+    approval = yohaku.approve(plan_id=plan.id, lane="review")
+    # Wait for human approval if lane == "review"
+
+    # 3. Confirm (idempotent)
+    result = yohaku.confirm(
+        plan_id=plan.id,
+        approve_id=approval.id,
+        idempotency_key=idempotency_key
+    )
+
+    # 4. Return receipt URL to user
+    return result.receipt_url
+```
+
+## Key Concepts
+
+**Authorization-first**: Every execution requires an Authorization object. The Authorization is the proof, not the human click.
+
+**KYA (Know Your Agent)**: Every receipt records executor (agent), principal (user/policy), and tenant. Delegation chain is preserved.
+
+**Evidence Pack**: Decision rationale + data source refs + model info. No raw data stored — refs and hashes only.
+
+**Context Receipt**: Signed proof of what external data the agent accessed, when, and with what permissions.
+
+**Freeze / Circuit Breaker**: Emergency stop at global / tenant / connector / target scope. Blocked confirms return 423.
+
+**Shadow Mode**: Execute without real side effects. Identical receipt structure. Use for testing before going live.
+
+**PROD Idempotency**: ConfirmRequest table with fencing token prevents ABA problems and crash recovery.
+
+## Positioning
+
+Yohaku is NOT:
+- A pre-deploy security scanner (that's Promptfoo / OpenAI Frontier)
+- A model evaluation framework
+- A guardrails / prompt injection detector
+
+Yohaku IS:
+- The runtime execution boundary — the last layer before an AI action touches production
+- The accountability layer — who authorized what, when, with what evidence
+- The recovery layer — idempotency, freeze, shadow mode
+
+## Contact / Design Partners
+
+GitHub: https://github.com/syohei0325/yohaku
+Design partners (3 slots, free 60 days): hello@yohaku.app
+
+## License
+
+MIT — open source, self-hostable.
+SaaS version available for teams that need managed audit trail and SLA.

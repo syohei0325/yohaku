@@ -22,8 +22,15 @@ Even if something goes wrong — you can explain everything
 
 ## ▶ Demo (45 sec)
 
-<!-- Add demo video after recording -->
-> 🎬 **Demo video coming soon** — [Watch on YouTube](#) | [Download mp4](#)
+> 🎬 **Demo video coming soon** — recording in progress.
+>
+> **What you'll see:**
+> 1. AI agent submits a plan → Approve link appears
+> 2. Click Approve (Review lane) → Authorization created
+> 3. Confirm runs → Receipt generated (Evidence / Lane / Outcome visible)
+> 4. Freeze triggered → next Confirm is blocked
+>
+> **Try it yourself:** `open http://localhost:3000/demo` after setup
 
 ---
 
@@ -143,7 +150,7 @@ Signed, tamper-evident proof of everything that happened.
 
 ```bash
 # Clone
-git clone https://github.com/your-username/yohaku.git
+git clone https://github.com/syohei0325/yohaku.git
 cd yohaku
 
 # Install
