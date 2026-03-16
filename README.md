@@ -1,10 +1,11 @@
 # Yohaku Action Cloud
 
-**The last 80 miles for agent production.**
+**Verified Execution OS for agent fleets.**
 
-> AI agents are executing in production. Who authorized it? What was the evidence? Can you stop it?
+> AI agents are executing in production. Who authorized it? What was the evidence? Can you prove it?
 
-Yohaku is the neutral execution layer that every AI agent must pass through.
+Yohaku is where context becomes verified execution.
+Every AI agent action passes through Yohaku before it touches the real world — and every execution leaves a signed, tamper-evident proof.
 
 ```
 AI Agent decides to act

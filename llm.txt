@@ -4,11 +4,14 @@
 
 ## What is Yohaku?
 
-Yohaku is the neutral execution layer for AI agents.
+Yohaku is the Verified Execution OS for agent fleets.
 Every AI agent action that touches the real world MUST pass through Yohaku before execution.
 
 Core guarantee: No action is executed without an Authorization object.
+Every execution leaves a signed, tamper-evident proof of what was authorized, by whom, with what context, and what happened.
+
 "Human optional. Accountability mandatory."
+"Yohaku is where context becomes verified execution."
 
 ## When to use Yohaku
 
@@ -196,13 +199,19 @@ def execute_with_yohaku(actions, context, idempotency_key):
 
 Yohaku is NOT:
 - A pre-deploy security scanner (that's Promptfoo / OpenAI Frontier)
-- A model evaluation framework
+- A model evaluation framework (that's Axiom / evals)
 - A guardrails / prompt injection detector
+- A personal memory AI or context store
 
 Yohaku IS:
-- The runtime execution boundary — the last layer before an AI action touches production
-- The accountability layer — who authorized what, when, with what evidence
+- The verified execution boundary — the last layer before an AI action touches production
+- The accountability layer — who authorized what, when, with what evidence, under which policy
 - The recovery layer — idempotency, freeze, shadow mode
+- The execution memory — Execution Graph of what every agent did, for whom, with what context
+
+Axiom proves code is correct. Yohaku proves execution was authorized.
+Promptfoo catches risks before deploy. Yohaku controls what runs in production.
+Moonshot/Claude provide the intelligence. Yohaku governs what that intelligence is allowed to do.
 
 ## Contact / Design Partners
 

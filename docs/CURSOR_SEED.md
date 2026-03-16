@@ -448,6 +448,98 @@
 # =========================================
 
 # =========================================
+# Ramp / a16z / Axiom 示唆（2026 追記）- Yohakuを "Verified Execution OS" に引き上げる
+# =========================================
+#
+# 示唆1：企業AIは「安い/有名」より「仕事で使える」が勝つ（Ramp + a16z）
+#   - OpenAIは最多企業利用だが、新規導入の直接対決ではAnthropicが約70%勝っている
+#   - Claudeは開発者インフラ・金融・科学/医療ツールなど "プロ向け接続" に寄っている
+#   - ChatGPTとClaudeのアプリ/コネクタの重複は約11%のみ
+#   → 水平AIの規模競争 と プロ向けワークフローの競争 は別ゲーム
+#   → Yohakuも「開発者・AIエンジニア・Ops/Platform」に刺すことが初期勝ち筋
+#
+# 示唆2：次に大きくなるのは「生成」より「検証・証明」（Axiom Series A $200M, $1.6B評価）
+#   - Menlo→Axiom：「AIがほぼ全てのコードを書く世界では、"頻繁に正しい"では足りない。
+#                    数学的に正しいと証明する層が必要になる」
+#   - "AIの上に何を載せると企業が金を払うか" の答えが
+#     生成の派手さ → 信頼・検証・証跡 に移っている
+#
+# Yohakuへの翻訳：
+#   Axiom = verified code（コードが正しいか）
+#   Yohaku = verified execution（実行が正しい権限・文脈・ポリシーの下で確定したか）
+#   → 言い切るならこれ：Yohaku = Verified Execution OS for agent fleets
+#
+# ─────────────────────────────────────────
+# ポジショニングのアップデート（固定）
+# ─────────────────────────────────────────
+#
+# 旧：Yohaku = safe confirmation API
+# 旧：Yohaku = Context Execution OS
+# 新：Yohaku = Verified Execution OS for agent fleets
+#
+# 外向けコピー（統一）：
+#   EN: "Yohaku is where context becomes verified execution."
+#   EN: "Yohaku is the verified execution boundary for agent fleets."
+#   JP: 余白は、AIの実行を"検証可能な確定"に変えるOS。
+#
+# ─────────────────────────────────────────
+# 強化3項目（実務）
+# ─────────────────────────────────────────
+#
+# [強化1] ActionSpec / Execution DSL を "コア" に昇格（追記ではなく本体）
+#   - 自然言語は直接実行しない（仕様上の禁止）
+#   - 必ず ActionSpec に compile → lint → approve → confirm
+#   - compiled_spec_hash を Receipt に残す
+#   - 理由：企業が欲しいのは "もっともらしい" ではなく "実行前に検証可能な中間表現"
+#           これが Axiom（verified code）に対応する Yohaku（verified execution）の実装
+#
+# [強化2] Execution Memory / Execution Graph を明示する
+#   - a16zの「context compounds」をYohakuでは Execution Memory に変換する
+#   - 個人メモリーAIには行かない。取るのは実行の記憶。
+#   - Execution Memory の構成要素（すでに実装済み）：
+#       Context Receipt（何を見たか）
+#       KYA（誰の代理か）
+#       Outcome Pack（結果どうだったか）
+#       prev_hash chain（改ざん不能な連鎖）
+#       fleet / mission / policy pack（艦隊単位の記憶）
+#   - これが Yohaku のロックイン源泉。切り替えコストを上げる。
+#
+# [強化3] 初期分配チャネルを開発者に絞る（Anthropic勝利パターンを踏む）
+#   - OpenClaw 入口パック（外部副作用は全部 Yohaku /confirm に流す）
+#   - Claude Code / MCP-friendly docs
+#   - llm.txt（済）
+#   - OpenAPI / SDK / examples
+#   - 理由：開発者・パワーユーザーに強いものが企業導入の起点になりやすい
+#
+# ─────────────────────────────────────────
+# やらないこと（この2本でさらに明確になった）
+# ─────────────────────────────────────────
+#   × 汎用AIアプリ / パーソナルメモリーAI
+#     → a16zの勝者は規模・文脈・アプリストア・ID層を取っている側。新規参入はきつい。
+#   × pre-deploy verification / security を全部自前でやる
+#     → Axiom / Promptfoo / OpenAI Frontier が競争激化。runtime boundary に張る。
+#   × YouTube向けSaaSを主戦場に戻す
+#     → 水平的な薄いAIアプリはロックインしづらい。
+#
+# ─────────────────────────────────────────
+# 長期での勝ち筋（固定）
+# ─────────────────────────────────────────
+#   Moonshotが知能を取りにいくなら、
+#   Axiomが証明を取りにいくなら、
+#   Anthropic/Claudeがワークフローの入口を取りにいくなら、
+#   Yohakuは "最後に実行される瞬間の責任" を取りにいく。
+#
+#   ここは、まだ全然取り切られていない。
+#   企業が本番でエージェントを動かす限り、残る層。
+#
+# 次の実務アクション（3つだけ）：
+#   1. 90秒デモを "verified execution" 文脈に寄せる
+#      ActionSpec → Policy lint → Confirm → Receipt → Freeze を見せる
+#   2. OpenClaw 入口パックを最小で出す（4機能のみ）
+#   3. CURSOR_SEED.md の上位コピーを "verified execution for agent fleets" に統一
+# =========================================
+
+# =========================================
 # North Star（矛盾ゼロ：Gate1→Gate2→Gate3の“増やし方”を最初から固定）
 # =========================================
 # ※表記ルール（外部でも誤解されないために固定）：
