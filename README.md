@@ -21,17 +21,19 @@ Even if something goes wrong — you can explain everything
 
 ---
 
-## ▶ Demo (45 sec)
+## ▶ Demo (90 sec)
 
-> 🎬 **Demo video coming soon** — recording in progress.
->
-> **What you'll see:**
-> 1. AI agent submits a plan → Approve link appears
-> 2. Click Approve (Review lane) → Authorization created
-> 3. Confirm runs → Receipt generated (Evidence / Lane / Outcome visible)
-> 4. Freeze triggered → next Confirm is blocked
->
-> **Try it yourself:** `open http://localhost:3000/demo` after setup
+[![Yohaku Demo](https://img.youtube.com/vi/rVUnSkW5go4/maxresdefault.jpg)](https://www.youtube.com/watch?v=rVUnSkW5go4)
+
+**[▶ Watch on YouTube](https://www.youtube.com/watch?v=rVUnSkW5go4)**
+
+**What you'll see:**
+1. AI agent submits a plan → Approve link appears
+2. Click Approve (Review lane) → Authorization created
+3. Confirm runs → Receipt generated (Evidence / Lane / Outcome visible)
+4. Webhook delivered ✅ — signed, tamper-evident proof
+
+**Try it yourself:** `open http://localhost:3000/demo` after setup
 
 ---
 
