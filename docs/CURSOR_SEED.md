@@ -540,6 +540,91 @@
 # =========================================
 
 # =========================================
+# Bret Taylor / Sierra 示唆（2026 追記）- Yohakuを "Process Completion OS" に育てる
+# =========================================
+#
+# 示唆元：Bret Taylor（Sierra CEO, Salesforce元共同CEO）インタビュー
+#   - Sierra は $100M ARR未満2年で到達（アウトカムベース課金）
+#   - 「AIの生産性の単位は"人"ではなく"プロセス"」
+#   - 「AI時代の勝ち筋は垂直特化と信頼設計」
+#   - 「信頼はモデル精度の問題ではなく設計の問題」
+#   - 「AIが仕事をするにはMarkdown/ファイルシステム的な文脈蓄積が効く」
+#
+# ─────────────────────────────────────────
+# 5つの示唆とYohakuへの翻訳
+# ─────────────────────────────────────────
+#
+# [1] 「承認API」ではなく「プロセスOS」として売る
+#   - AIの生産性の単位は"人"ではなく"プロセス"（Bret Taylor）
+#   - 旧：安全な /confirm
+#   - 新：業務プロセスを安全に完了させる OS
+#   - 追加コピー：
+#       "The atomic unit of AI productivity is a process, not a person."
+#       "Yohaku manages verified process completion, not just approvals."
+#   - 既存の fleet / mission / workflow / Policy Pack / Execution Graph は
+#     この方向にすでに向かっている → 新機能不要、言い換えだけでいい
+#
+# [2] 価格は「成果報酬」っぽく寄せる（今すぐ完全成果報酬にはしない）
+#   - Sierra はアウトカム課金で伸びた（問題解決→課金、エスカレーション→無料）
+#   - Yohakuはまだ "安全に確定させる" 側なので、今すぐ完全成果報酬は早い
+#   - Pricing Ladder（固定）：
+#       短期：Platform Fee + /confirm usage（現在）
+#       中期：workflow pack ごとの価格
+#       長期：successful confirmed process に寄せた成果課金
+#   - 課金の単位を「席」ではなく「プロセス/確定」に寄せ続ける
+#
+# [3] "最小で再現可能な実行文脈" にする（巨大メモリーを持たない）
+#   - Bretは「Markdownのディレクトリのように意図・履歴・背景を蓄積」と発言
+#   - ただし注意：AGENTS.md的な過剰なコンテキストは成功率を下げ推論コストを20%以上増やす
+#   - Yohakuが採るべき方針（Minimal Context Doctrine）：
+#       × 巨大なメモリーを持たない
+#       × 長文の Context を抱え込まない
+#       ○ 最小の refs + hash + scope + signed receipt だけ持つ
+#       ○ "最小で再現可能な実行文脈" = Context Receipt + ActionSpec + compiled_spec_hash
+#   - これは既存の Context Execution OS 路線と完全に噛み合う
+#
+# [4] 「信頼」をUIではなく"trust loop"として設計する
+#   - 信頼はモデル精度の問題ではなく設計の問題（guardrails / supervisor / oversight loop）
+#   - Yohakuの trust loop（すでに実装済み）：
+#       ActionSpec lint → Auto/Review/Gate → Freeze → Receipt → Outcome Pack → Audit Bundle
+#   - 今後の外向けコピー：
+#       旧：「安全」
+#       新：「trust loop を最小クリックで回せる」
+#
+# [5] 最初の wedge は「垂直特化」で切る
+#   - AI時代の企業ソフトは vertical specialists が勝つ（Bret Taylor）
+#   - Yohakuが刺さりやすいプロセス領域：
+#       ① IT / Ops / SRE（自動化インシデント対応）
+#       ② SupportOps（カスタマーサポートの実行確定）
+#       ③ RevOps / onboarding（契約・オンボーディングの自動化）
+#       ④ 規制のあるバックオフィス（金融・医療・法務）
+#   - どれか1つに絞って「このプロセスをAIで回したいが最後の実行が怖い」に答える
+#
+# ─────────────────────────────────────────
+# CURSOR_SEED.md への追加3ブロック（要旨）
+# ─────────────────────────────────────────
+#
+# 追加1：Process-first の明文化（North Star に追記）
+#   "The atomic unit of AI productivity is a process, not a person."
+#   "Yohaku manages verified process completion, not just approvals."
+#
+# 追加2：Minimal Context Doctrine（設計方針として固定）
+#   巨大なメモリーを持たない。最小の refs + hash + scope + signed receipt だけ持つ。
+#   AIのために context を増やすより、execution を検証可能にする。
+#
+# 追加3：Pricing Ladder の将来方向（思想を揃える）
+#   今：/confirm usage 課金
+#   将来：successful process completion / workflow unit の outcome pricing
+#
+# ─────────────────────────────────────────
+# 一言（固定）
+# ─────────────────────────────────────────
+#   コードはコモディティになる。モデルも進化する。
+#   でも「どんな文脈で / どの権限で / どのプロセスを / どう完了させたか」は残る。
+#   それがYohaku。
+# =========================================
+
+# =========================================
 # North Star（矛盾ゼロ：Gate1→Gate2→Gate3の“増やし方”を最初から固定）
 # =========================================
 # ※表記ルール（外部でも誤解されないために固定）：
