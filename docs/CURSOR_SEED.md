@@ -625,6 +625,66 @@
 # =========================================
 
 # =========================================
+# Ramp / a16z / Axiom 再統合（2026 追記）- 判断の強化とGTMの寄せ方
+# =========================================
+#
+# 示唆の出典（要旨）：
+#   Ramp（2026年3月頃）：企業AIは「誰が一番有名か」より「仕事にちゃんとハマるか」
+#     - AnthropicはRamp上で「4社に1社」が有料利用に達した
+#     - 初めてAIを買う企業のOpenAIとの直接対決でAnthropicが約70%
+#     - OpenAIは依然として最多企業に採用されている
+#     - Anthropicの優位は「最初に社内で推すエンジニア/AI担当者」に強かったことが企業導入に波及
+#     - 価格より信頼・フィット・社内エバンジェリストが強い（安くないのに需要が強い）
+#   a16z Consumer AI：デフォルトAI＋コンテキスト＋コネクタでロックイン
+#     - ChatGPTは週次9億ユーザー規模、競争軸は精度より「コンテキストの蓄積とコネクタ/アプリ」
+#     - ChatGPTとClaudeのコネクタ/アプリの重複は約11%のみ
+#     - Claudeは金融・科学・開発者向けのプロフェッショナル接続に寄っている
+#     - vibe coding / エージェント系は技術者には強いが、まだ真のマス市場までは行っていない
+#     - 画像・動画はプラットフォームの改良で単独アプリの価値が圧縮されやすい（声・音楽は比較的独立）
+#   Menlo Axiom：Series A $200M、post $1.6B — 「頻繁に正しい」では足りない、verified AI が必要
+#
+# Yohakuへの翻訳（固定）：
+#   本命：Yohaku（Verified Execution OS / verified execution）
+#   入口：OpenClaw / Claude Code / MCP（分配チャネル。本体ではない）
+#   主戦場にしない：YouTube翻訳・吹替・公開前QAの別SaaS（デモ/獲得導線に使うならOK）
+#
+# 1. Yohakuは「正しい場所」にいる
+#   - Axiomが verified code を取りにいくなら、Yohakuは verified execution を取りにいく
+#   - モデルが強くなるほど企業が欲しいのは：
+#       何を見て判断したか / 誰の権限で動いたか / ActionSpecが本当に実行されたか / 事故ったら止められるか
+#   - だから需要は上がる側（薄いUIではなく、実行直前/直後の責任・証跡・停止・復旧）
+#
+# 2. OpenClawは本体ではなく分配チャネル
+#   - いま熱い・開発者が触る・話題になる → 入口には最高
+#   - 課金・監査・Freeze・Receipt・Idempotency の本体はYohaku
+#
+# 3. YouTube系SaaSの優先度はさらに下げていい
+#   - 本命はYohaku。YouTubeはYohaku/OpenClawのデモと獲得導線に使う方が期待値が高い
+#
+# CURSOR_SEED.md 強化の4点（全面書き換え不要）：
+#
+#   [1] GTMを「社内エバンジェリスト起点」に寄せる
+#       最初に刺す相手：Agent/Automation Engineer、Platform/SRE、Security-minded builder
+#       この層が「本番が怖い」と言う状態を作る（RampのAnthropicパターン）
+#
+#   [2] Context Receipt に namespace / segmentation の思想を足す
+#       消費者メモリーはやらない。ただし work/personal/tenant/mission の分離は設計に入れる価値がある
+#       （a16zの「仕事用と個人用の文脈が混ざる問題」への対応）
+#
+#   [3] 「コネクタ戦略」を明示する
+#       OpenAPI / llm.txt / Claude・MCP・OpenClaw Quickstart / agent-friendly docs
+#       = エージェントに選ばれるための入口（プラットフォームのコネクタ競争と同型の戦略）
+#
+#   [4] 価格は「安売り」しない
+#       RampのAnthropicデータ：高くても信頼・フィットが勝つ
+#       Yohaku：Seat課金より Platform fee + /confirm usage + risk-tier/lane別 + 将来の outcome-ish pricing
+#
+# 一言（固定）：
+#   AI時代に金が付くのは「賢さ」そのものではなく、「仕事で使える」「証明できる」「止められる」層。
+#   だからYohakuの方向は合っている。
+# =========================================
+
+# =========================================
 # North Star（矛盾ゼロ：Gate1→Gate2→Gate3の“増やし方”を最初から固定）
 # =========================================
 # ※表記ルール（外部でも誤解されないために固定）：
